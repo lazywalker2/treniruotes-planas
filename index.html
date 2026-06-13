@@ -189,6 +189,48 @@
   }
   .field input:focus { outline: 2px solid var(--accent); }
 
+  .sets-block {
+    margin-bottom: 12px;
+  }
+  .sets-title {
+    font-size: 0.8rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 6px;
+  }
+  .set-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .set-row:last-of-type { border-bottom: none; }
+  .set-row .set-label {
+    font-size: 0.9rem;
+    color: var(--text);
+  }
+  .set-row input {
+    width: 80px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card2);
+    color: var(--text);
+    font-size: 0.95rem;
+    text-align: center;
+  }
+  .set-row input:focus { outline: 2px solid var(--accent); }
+  .sets-sum {
+    margin-top: 6px;
+    font-size: 0.85rem;
+    color: var(--muted);
+    text-align: right;
+  }
+  .sets-sum b { color: var(--accent2); font-size: 1rem; }
+
   .day-actions {
     display: flex;
     justify-content: space-between;
@@ -548,16 +590,41 @@ function renderDays() {
     } else if (type === 'train') {
       badgeHtml = `<span class="badge train">TRENIRUOTĖ</span>`;
       planHtml = `<b>Atsispaudimai:</b> 5 setai × ${w.dailyPushupReps} kartų (poilsis 60-90s) &nbsp;|&nbsp; <b>Plank:</b> 3 setai × ${w.dailyPlankSec}s (poilsis 30-45s)`;
+
+      const pushupReps = entry.pushupReps || [];
+      const plankSecs = entry.plankSecs || [];
+      const pushupSum = pushupReps.reduce((a, b) => a + (Number(b) || 0), 0);
+      const plankSum = plankSecs.reduce((a, b) => a + (Number(b) || 0), 0);
+      const pushupTarget = w.dailyPushupReps * 5;
+      const plankTarget = w.dailyPlankSec * 3;
+
+      let pushupRows = '';
+      for (let i = 0; i < 5; i++) {
+        pushupRows += `
+          <div class="set-row">
+            <span class="set-label">Atsispaudimai — setas ${i + 1}</span>
+            <input type="number" min="0" placeholder="${w.dailyPushupReps}" value="${pushupReps[i] ?? ''}" onchange="updateSetField('${key}','pushupReps',${i},this.value)">
+          </div>`;
+      }
+      let plankRows = '';
+      for (let i = 0; i < 3; i++) {
+        plankRows += `
+          <div class="set-row">
+            <span class="set-label">Plank — setas ${i + 1} (sek.)</span>
+            <input type="number" min="0" placeholder="${w.dailyPlankSec}" value="${plankSecs[i] ?? ''}" onchange="updateSetField('${key}','plankSecs',${i},this.value)">
+          </div>`;
+      }
+
       inputsHtml = `
-        <div class="day-inputs">
-          <div class="field">
-            <label>Atlikti atsispaudimų setai</label>
-            <input type="number" min="0" max="5" placeholder="5" value="${entry.pushupSets ?? ''}" onchange="updateField('${key}','pushupSets',this.value)">
-          </div>
-          <div class="field">
-            <label>Atlikti plank setai</label>
-            <input type="number" min="0" max="3" placeholder="3" value="${entry.plankSets ?? ''}" onchange="updateField('${key}','plankSets',this.value)">
-          </div>
+        <div class="sets-block">
+          <div class="sets-title">Atsispaudimai</div>
+          ${pushupRows}
+          <div class="sets-sum">Iš viso: <b>${pushupSum}</b> / ${pushupTarget}</div>
+        </div>
+        <div class="sets-block">
+          <div class="sets-title">Plank</div>
+          ${plankRows}
+          <div class="sets-sum">Iš viso: <b>${plankSum}s</b> / ${plankTarget}s</div>
         </div>
       `;
     } else {
@@ -677,6 +744,14 @@ function updateField(key, field, value) {
   renderCharts();
 }
 
+function updateSetField(key, field, index, value) {
+  if (!data[key]) data[key] = {};
+  if (!data[key][field]) data[key][field] = [];
+  data[key][field][index] = value;
+  saveData(data);
+  renderDays();
+}
+
 function toggleComplete(key) {
   if (!data[key]) data[key] = {};
   data[key].completed = !data[key].completed;
@@ -694,17 +769,21 @@ function resetProgress() {
 }
 
 // ====== LOGIN ======
-const PW_HASH = '54f3331f4be1e5ee6ab7cf9f01c2e300db0f436c6c24d8921bd6ad581998b949';
+const PW_HASH = 'd1ff8af8';
 const UNLOCK_KEY = 'treniruotes_unlocked';
 
-async function sha256(text) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+function simpleHash(str) {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) + str.charCodeAt(i);
+    hash = hash & hash;
+  }
+  return (hash >>> 0).toString(16);
 }
 
-async function checkPassword() {
+function checkPassword() {
   const input = document.getElementById('pwInput');
-  const hash = await sha256(input.value);
+  const hash = simpleHash(input.value);
   if (hash === PW_HASH) {
     localStorage.setItem(UNLOCK_KEY, '1');
     unlock();
