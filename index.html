@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atsispaudimų ir Plank Programa</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --card2: #273449;
+    --accent: #38bdf8;
+    --accent2: #4ade80;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --danger: #f87171;
+    --border: #334155;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding-bottom: 40px;
+  }
+  header {
+    padding: 24px 16px 16px;
+    text-align: center;
+    background: linear-gradient(135deg, #1e3a5f, #0f172a);
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 { margin: 0 0 4px; font-size: 1.4rem; }
+  header p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+
+  .container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 16px;
+  }
+
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    text-align: center;
+  }
+  .stat .value { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+  .stat .label { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+
+  .progress-bar-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+  .progress-bar-wrap .pb-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .progress-bar {
+    height: 10px;
+    background: var(--card2);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 6px;
+    transition: width 0.3s;
+  }
+
+  .week-tabs {
+    display: flex;
+    overflow-x: auto;
+    gap: 6px;
+    margin-bottom: 16px;
+    padding-bottom: 4px;
+  }
+  .week-tab {
+    flex: 0 0 auto;
+    padding: 8px 14px;
+    border-radius: 20px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+  }
+  .week-tab.active {
+    background: var(--accent);
+    color: #0f172a;
+    font-weight: 600;
+    border-color: var(--accent);
+  }
+  .week-tab.done::after { content: " ✓"; }
+
+  .week-header {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 14px;
+  }
+  .week-header h2 { margin: 0 0 4px; font-size: 1.1rem; }
+  .week-header .targets {
+    display: flex;
+    gap: 16px;
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+  .week-header .targets b { color: var(--text); }
+
+  .day-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+  .day-card.completed {
+    border-color: var(--accent2);
+    background: linear-gradient(135deg, rgba(74,222,128,0.08), var(--card));
+  }
+  .day-card .day-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .day-card .day-title h3 {
+    margin: 0;
+    font-size: 1rem;
+  }
+  .badge {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+  .badge.test { background: #facc15; color: #1e293b; }
+  .badge.train { background: #38bdf8; color: #1e293b; }
+  .badge.recovery { background: #c084fc; color: #1e293b; }
+
+  .day-plan {
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin-bottom: 10px;
+    line-height: 1.5;
+  }
+  .day-plan b { color: var(--text); }
+
+  .day-inputs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .field label { font-size: 0.75rem; color: var(--muted); }
+  .field input {
+    width: 90px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card2);
+    color: var(--text);
+    font-size: 0.95rem;
+  }
+  .field input:focus { outline: 2px solid var(--accent); }
+
+  .day-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .complete-btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    background: var(--card2);
+    color: var(--text);
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.85rem;
+    border: 1px solid var(--border);
+    transition: all 0.15s;
+  }
+  .complete-btn.active {
+    background: var(--accent2);
+    color: #0f172a;
+    border-color: var(--accent2);
+  }
+
+  .note-field {
+    flex: 1 1 100%;
+  }
+  .note-field input { width: 100%; }
+
+  .chart-section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+  .chart-section h2 { margin: 0 0 12px; font-size: 1.1rem; }
+  .chart-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 0.8rem;
+  }
+  .chart-row .chart-label { width: 60px; color: var(--muted); flex-shrink: 0; }
+  .chart-row .chart-track {
+    flex: 1;
+    background: var(--card2);
+    border-radius: 6px;
+    height: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .chart-row .chart-fill-target {
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    background: rgba(148,163,184,0.25);
+    border-radius: 6px;
+  }
+  .chart-row .chart-fill-actual {
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 6px;
+    transition: width 0.4s;
+  }
+  .chart-row .chart-value {
+    width: 70px;
+    text-align: right;
+    flex-shrink: 0;
+    color: var(--muted);
+  }
+  .chart-legend {
+    display: flex;
+    gap: 16px;
+    font-size: 0.75rem;
+    color: var(--muted);
+    margin-top: 8px;
+  }
+  .chart-legend span { display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+  .reset-section {
+    text-align: center;
+    margin-top: 24px;
+  }
+  .reset-btn {
+    background: transparent;
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.75rem;
+    margin-top: 24px;
+    padding: 0 16px;
+  }
+
+  /* ===== Login overlay ===== */
+  #loginOverlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 16px;
+  }
+  #loginOverlay .login-box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px 24px;
+    width: 100%;
+    max-width: 320px;
+    text-align: center;
+  }
+  #loginOverlay h2 { margin: 0 0 6px; font-size: 1.2rem; }
+  #loginOverlay p { color: var(--muted); font-size: 0.85rem; margin: 0 0 16px; }
+  #loginOverlay input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card2);
+    color: var(--text);
+    font-size: 1rem;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+  #loginOverlay button {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    background: var(--accent);
+    color: #0f172a;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  #loginError {
+    color: var(--danger);
+    font-size: 0.8rem;
+    margin-top: 8px;
+    min-height: 1em;
+  }
+  body.locked > *:not(#loginOverlay) { display: none !important; }
+</style>
+</head>
+<body class="locked">
+
+<div id="loginOverlay">
+  <div class="login-box">
+    <h2>🔒 Treniruočių planas</h2>
+    <p>Įvesk slaptažodį</p>
+    <input type="password" id="pwInput" placeholder="Slaptažodis" autofocus onkeydown="if(event.key==='Enter') checkPassword()">
+    <button onclick="checkPassword()">Atrakinti</button>
+    <div id="loginError"></div>
+  </div>
+</div>
+
+<header>
+  <h1>💪 Atsispaudimai &amp; Plank — 8 savaičių programa</h1>
+  <p>Tikslas: 50 atsispaudimų ir 3 min (180s) plank per 8 savaites</p>
+</header>
+
+<div class="container">
+
+  <div class="summary">
+    <div class="stat">
+      <div class="value" id="statDays">0/56</div>
+      <div class="label">Dienos atliktos</div>
+    </div>
+    <div class="stat">
+      <div class="value" id="statStreak">0</div>
+      <div class="label">Dienų iš eilės</div>
+    </div>
+    <div class="stat">
+      <div class="value" id="statWeek">1</div>
+      <div class="label">Savaitė</div>
+    </div>
+  </div>
+
+  <div class="progress-bar-wrap">
+    <div class="pb-label">
+      <span>Bendra programos pažanga</span>
+      <span id="pbPercent">0%</span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-bar-fill" id="pbFill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <div class="chart-section">
+    <h2>📈 Testų pažanga</h2>
+    <div id="pushupChart"></div>
+    <div class="chart-legend">
+      <span><i class="legend-dot" style="background:rgba(148,163,184,0.25)"></i> Tikslas (savaitės)</span>
+      <span><i class="legend-dot" style="background:linear-gradient(90deg,#38bdf8,#4ade80)"></i> Tavo rezultatas</span>
+    </div>
+  </div>
+
+  <div class="chart-section">
+    <div id="plankChart"></div>
+  </div>
+
+  <div class="week-tabs" id="weekTabs"></div>
+
+  <div class="week-header" id="weekHeader"></div>
+
+  <div id="daysList"></div>
+
+  <div class="reset-section">
+    <button class="reset-btn" onclick="resetProgress()">Atstatyti visą progresą</button>
+  </div>
+</div>
+
+<footer>
+  Duomenys saugomi tavo naršyklėje (localStorage). Pildyk po kiekvienos treniruotės — pažanga skaičiuojama automatiškai.
+</footer>
+
+<script>
+// ====== PLANO DUOMENYS ======
+const weeks = [
+  { num: 1, maxPushupTarget: 12, dailyPushupReps: 8,  maxPlankTarget: 30,  dailyPlankSec: 20 },
+  { num: 2, maxPushupTarget: 16, dailyPushupReps: 10, maxPlankTarget: 40,  dailyPlankSec: 28 },
+  { num: 3, maxPushupTarget: 20, dailyPushupReps: 13, maxPlankTarget: 55,  dailyPlankSec: 38 },
+  { num: 4, maxPushupTarget: 25, dailyPushupReps: 16, maxPlankTarget: 70,  dailyPlankSec: 48 },
+  { num: 5, maxPushupTarget: 30, dailyPushupReps: 19, maxPlankTarget: 90,  dailyPlankSec: 60 },
+  { num: 6, maxPushupTarget: 35, dailyPushupReps: 22, maxPlankTarget: 115, dailyPlankSec: 75 },
+  { num: 7, maxPushupTarget: 42, dailyPushupReps: 27, maxPlankTarget: 145, dailyPlankSec: 95 },
+  { num: 8, maxPushupTarget: 50, dailyPushupReps: 32, maxPlankTarget: 180, dailyPlankSec: 120 },
+];
+
+// dienos tipas pagal savaitės dieną (1-7): 1 = test, 2-6 = train, 7 = recovery
+function dayType(weekDay) {
+  if (weekDay === 1) return 'test';
+  if (weekDay === 7) return 'recovery';
+  return 'train';
+}
+
+const STORAGE_KEY = 'treniruotes_progress_v1';
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) { return {}; }
+}
+function saveData(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+let data = loadData();
+let currentWeek = 1;
+
+// rasti pirmą neužbaigtą savaitę pradiniam rodymui
+function findCurrentWeek() {
+  for (let w = 1; w <= 8; w++) {
+    for (let d = 1; d <= 7; d++) {
+      const key = dayKey(w, d);
+      if (!data[key] || !data[key].completed) {
+        return w;
+      }
+    }
+  }
+  return 8;
+}
+
+function dayKey(week, day) {
+  return `w${week}d${day}`;
+}
+
+function globalDayNumber(week, day) {
+  return (week - 1) * 7 + day;
+}
+
+// ====== RENDER ======
+function renderWeekTabs() {
+  const wrap = document.getElementById('weekTabs');
+  wrap.innerHTML = '';
+  weeks.forEach(w => {
+    const allDone = isWeekComplete(w.num);
+    const tab = document.createElement('div');
+    tab.className = 'week-tab' + (w.num === currentWeek ? ' active' : '') + (allDone ? ' done' : '');
+    tab.textContent = `Sav. ${w.num}`;
+    tab.onclick = () => { currentWeek = w.num; renderAll(); };
+    wrap.appendChild(tab);
+  });
+}
+
+function isWeekComplete(weekNum) {
+  for (let d = 1; d <= 7; d++) {
+    const key = dayKey(weekNum, d);
+    if (!data[key] || !data[key].completed) return false;
+  }
+  return true;
+}
+
+function renderWeekHeader() {
+  const w = weeks[currentWeek - 1];
+  const el = document.getElementById('weekHeader');
+  el.innerHTML = `
+    <h2>Savaitė ${w.num} / 8</h2>
+    <div class="targets">
+      <span>🏆 Atsispaudimų testas: <b>${w.maxPushupTarget}</b></span>
+      <span>🏆 Plank testas: <b>${w.maxPlankTarget}s</b></span>
+    </div>
+    <div class="targets">
+      <span>Dienos atsispaudimai: <b>5×${w.dailyPushupReps}</b></span>
+      <span>Dienos plank: <b>3×${w.dailyPlankSec}s</b></span>
+    </div>
+  `;
+}
+
+const dayNames = ['', 'Pirmadienis', 'Antradienis', 'Trečiadienis', 'Ketvirtadienis', 'Penktadienis', 'Šeštadienis', 'Sekmadienis'];
+
+function renderDays() {
+  const w = weeks[currentWeek - 1];
+  const list = document.getElementById('daysList');
+  list.innerHTML = '';
+
+  for (let d = 1; d <= 7; d++) {
+    const key = dayKey(w.num, d);
+    const type = dayType(d);
+    const entry = data[key] || {};
+    const card = document.createElement('div');
+    card.className = 'day-card' + (entry.completed ? ' completed' : '');
+
+    let badgeHtml, planHtml, inputsHtml;
+
+    if (type === 'test') {
+      badgeHtml = `<span class="badge test">TEST DIENA</span>`;
+      planHtml = `Atlik <b>maksimalų atsispaudimų skaičių</b> vienu ėjimu ir <b>maksimalią plank laikyseną</b>. Tikslas šiai savaitei: ${w.maxPushupTarget} at. / ${w.maxPlankTarget}s.`;
+      inputsHtml = `
+        <div class="day-inputs">
+          <div class="field">
+            <label>Atsispaudimai (max)</label>
+            <input type="number" min="0" placeholder="${w.maxPushupTarget}" value="${entry.pushups ?? ''}" onchange="updateField('${key}','pushups',this.value)">
+          </div>
+          <div class="field">
+            <label>Plank (sek, max)</label>
+            <input type="number" min="0" placeholder="${w.maxPlankTarget}" value="${entry.plank ?? ''}" onchange="updateField('${key}','plank',this.value)">
+          </div>
+        </div>
+      `;
+    } else if (type === 'train') {
+      badgeHtml = `<span class="badge train">TRENIRUOTĖ</span>`;
+      planHtml = `<b>Atsispaudimai:</b> 5 setai × ${w.dailyPushupReps} kartų (poilsis 60-90s) &nbsp;|&nbsp; <b>Plank:</b> 3 setai × ${w.dailyPlankSec}s (poilsis 30-45s)`;
+      inputsHtml = `
+        <div class="day-inputs">
+          <div class="field">
+            <label>Atlikti atsispaudimų setai</label>
+            <input type="number" min="0" max="5" placeholder="5" value="${entry.pushupSets ?? ''}" onchange="updateField('${key}','pushupSets',this.value)">
+          </div>
+          <div class="field">
+            <label>Atlikti plank setai</label>
+            <input type="number" min="0" max="3" placeholder="3" value="${entry.plankSets ?? ''}" onchange="updateField('${key}','plankSets',this.value)">
+          </div>
+        </div>
+      `;
+    } else {
+      badgeHtml = `<span class="badge recovery">ATSIGAVIMAS</span>`;
+      planHtml = `Lengvas tempimas, mobilumo pratimai, 20-30 min vaikščiojimas. Be raumenų krūvio.`;
+      inputsHtml = '';
+    }
+
+    card.innerHTML = `
+      <div class="day-title">
+        <h3>${dayNames[d]} — ${w.num}.${d} (diena ${globalDayNumber(w.num, d)}/56)</h3>
+        ${badgeHtml}
+      </div>
+      <div class="day-plan">${planHtml}</div>
+      ${inputsHtml}
+      <div class="day-actions">
+        <button class="complete-btn ${entry.completed ? 'active' : ''}" onclick="toggleComplete('${key}')">
+          ${entry.completed ? '✓ Atlikta' : 'Pažymėti atlikta'}
+        </button>
+        <div class="note-field">
+          <input type="text" placeholder="Pastaba (savijauta, sunkumai...)" value="${entry.note ?? ''}" onchange="updateField('${key}','note',this.value)">
+        </div>
+      </div>
+    `;
+    list.appendChild(card);
+  }
+}
+
+function renderCharts() {
+  // Atsispaudimų testų grafikas
+  let pushupHtml = `<h2>📈 Atsispaudimų testai</h2>`;
+  let plankHtml = `<h2>📈 Plank testai</h2>`;
+
+  weeks.forEach(w => {
+    const key = dayKey(w.num, 1);
+    const entry = data[key] || {};
+    const actualPush = entry.pushups !== undefined && entry.pushups !== '' ? Number(entry.pushups) : null;
+    const actualPlank = entry.plank !== undefined && entry.plank !== '' ? Number(entry.plank) : null;
+
+    const maxScalePush = 50;
+    const maxScalePlank = 180;
+
+    const targetPushPct = (w.maxPushupTarget / maxScalePush) * 100;
+    const actualPushPct = actualPush !== null ? (actualPush / maxScalePush) * 100 : 0;
+
+    const targetPlankPct = (w.maxPlankTarget / maxScalePlank) * 100;
+    const actualPlankPct = actualPlank !== null ? (actualPlank / maxScalePlank) * 100 : 0;
+
+    pushupHtml += `
+      <div class="chart-row">
+        <div class="chart-label">Sav. ${w.num}</div>
+        <div class="chart-track">
+          <div class="chart-fill-target" style="width:${targetPushPct}%"></div>
+          <div class="chart-fill-actual" style="width:${actualPushPct}%"></div>
+        </div>
+        <div class="chart-value">${actualPush !== null ? actualPush : '—'} / ${w.maxPushupTarget}</div>
+      </div>
+    `;
+
+    plankHtml += `
+      <div class="chart-row">
+        <div class="chart-label">Sav. ${w.num}</div>
+        <div class="chart-track">
+          <div class="chart-fill-target" style="width:${targetPlankPct}%"></div>
+          <div class="chart-fill-actual" style="width:${actualPlankPct}%"></div>
+        </div>
+        <div class="chart-value">${actualPlank !== null ? actualPlank + 's' : '—'} / ${w.maxPlankTarget}s</div>
+      </div>
+    `;
+  });
+
+  document.getElementById('pushupChart').innerHTML = pushupHtml;
+  document.getElementById('plankChart').innerHTML = plankHtml;
+}
+
+function renderSummary() {
+  let completedCount = 0;
+  for (let w = 1; w <= 8; w++) {
+    for (let d = 1; d <= 7; d++) {
+      const key = dayKey(w, d);
+      if (data[key] && data[key].completed) completedCount++;
+    }
+  }
+  document.getElementById('statDays').textContent = `${completedCount}/56`;
+  document.getElementById('pbPercent').textContent = `${Math.round((completedCount/56)*100)}%`;
+  document.getElementById('pbFill').style.width = `${(completedCount/56)*100}%`;
+  document.getElementById('statWeek').textContent = currentWeek;
+
+  // streak: skaičiuojame iš galo nuo paskutinės pažymėtos dienos atgal
+  let streak = 0;
+  for (let g = 56; g >= 1; g--) {
+    const w = Math.ceil(g / 7);
+    const d = g - (w - 1) * 7;
+    const key = dayKey(w, d);
+    if (data[key] && data[key].completed) {
+      streak++;
+    } else {
+      if (streak > 0) break;
+    }
+  }
+  document.getElementById('statStreak').textContent = streak;
+}
+
+function renderAll() {
+  renderWeekTabs();
+  renderWeekHeader();
+  renderDays();
+  renderCharts();
+  renderSummary();
+}
+
+// ====== VEIKSMAI ======
+function updateField(key, field, value) {
+  if (!data[key]) data[key] = {};
+  data[key][field] = value;
+  saveData(data);
+  renderCharts();
+}
+
+function toggleComplete(key) {
+  if (!data[key]) data[key] = {};
+  data[key].completed = !data[key].completed;
+  saveData(data);
+  renderAll();
+}
+
+function resetProgress() {
+  if (confirm('Ar tikrai norite atstatyti VISĄ progresą? Šio veiksmo neįmanoma atšaukti.')) {
+    data = {};
+    saveData(data);
+    currentWeek = 1;
+    renderAll();
+  }
+}
+
+// ====== LOGIN ======
+const PW_HASH = '54f3331f4be1e5ee6ab7cf9f01c2e300db0f436c6c24d8921bd6ad581998b949';
+const UNLOCK_KEY = 'treniruotes_unlocked';
+
+async function sha256(text) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function checkPassword() {
+  const input = document.getElementById('pwInput');
+  const hash = await sha256(input.value);
+  if (hash === PW_HASH) {
+    localStorage.setItem(UNLOCK_KEY, '1');
+    unlock();
+  } else {
+    document.getElementById('loginError').textContent = 'Neteisingas slaptažodis';
+    input.value = '';
+    input.focus();
+  }
+}
+
+function unlock() {
+  document.body.classList.remove('locked');
+  document.getElementById('loginOverlay').remove();
+}
+
+// ====== INIT ======
+currentWeek = findCurrentWeek();
+renderAll();
+
+if (localStorage.getItem(UNLOCK_KEY) === '1') {
+  unlock();
+}
+</script>
+
+</body>
+</html>
